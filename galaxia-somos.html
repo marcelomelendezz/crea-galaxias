@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SOMOS · Galaxia</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;
+  font-family:'Courier New',monospace;user-select:none;}
+#app{width:100%;height:100%;position:relative;}
+canvas{display:block;touch-action:none;}
+
+/* PANEL */
+#panel{
+  position:absolute;top:10px;left:10px;
+  background:rgba(0,0,0,0.65);
+  border:1px solid rgba(150,100,255,0.25);
+  border-radius:14px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:6px;
+  min-width:170px;backdrop-filter:blur(4px);
+}
+.panel-title{font-size:8px;color:rgba(180,120,255,0.6);
+  letter-spacing:2.5px;margin-bottom:1px;font-weight:bold;}
+.row{display:flex;align-items:center;gap:7px;}
+.row label{font-size:8px;color:rgba(200,170,255,0.6);width:72px;letter-spacing:0.5px;}
+.row input[type=range]{flex:1;accent-color:#aa66ff;height:3px;cursor:pointer;}
+.row .v{font-size:8px;color:rgba(220,190,255,0.8);width:24px;text-align:right;}
+.divider{height:1px;background:rgba(150,100,255,0.12);margin:2px 0;}
+
+/* TYPE BUTTONS */
+#type-row{display:flex;gap:4px;flex-wrap:wrap;}
+.tbtn{
+  padding:3px 7px;border-radius:6px;cursor:pointer;font-size:7.5px;
+  border:1px solid rgba(150,100,255,0.2);background:rgba(150,100,255,0.05);
+  color:rgba(200,170,255,0.55);transition:all 0.1s;letter-spacing:0.3px;
+  font-weight:bold;
+}
+.tbtn.on{background:rgba(150,100,255,0.25);border-color:rgba(180,130,255,0.6);
+  color:#ddaaff;box-shadow:0 0 8px rgba(150,100,255,0.2);}
+.tbtn:active{transform:scale(0.93);}
+
+/* COLOR PRESETS */
+#color-row{display:flex;gap:5px;flex-wrap:wrap;}
+.cbtn{
+  width:20px;height:20px;border-radius:50%;cursor:pointer;
+  border:2px solid rgba(255,255,255,0.1);transition:all 0.1s;
+}
+.cbtn.on{border-color:#fff;transform:scale(1.2);box-shadow:0 0 8px rgba(255,255,255,0.3);}
+.cbtn:active{transform:scale(0.9);}
+
+/* BUTTONS */
+.action-btn{
+  padding:6px 8px;border-radius:8px;cursor:pointer;font-size:8px;
+  font-weight:bold;letter-spacing:0.5px;border:none;
+  transition:all 0.1s;
+}
+.action-btn:active{transform:scale(0.95);}
+#regenerateBtn{background:linear-gradient(135deg,#5522aa,#3311aa);color:#ddaaff;
+  box-shadow:0 0 10px rgba(100,50,200,0.3);}
+#saveBtn{background:linear-gradient(135deg,#224488,#112255);color:#aaccff;
+  box-shadow:0 0 10px rgba(50,100,200,0.3);}
+
+/* HUD bottom */
+#hud{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  font-size:8px;color:rgba(180,140,255,0.4);letter-spacing:1px;
+  pointer-events:none;text-align:center;
+}
+
+/* DRAG hint */
+#drag-hint{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:clamp(11px,3vw,16px);color:rgba(200,170,255,0.18);
+  pointer-events:none;letter-spacing:2px;font-weight:bold;
+  text-align:center;line-height:1.8;transition:opacity 1s;
+}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="c"></canvas>
+
+<div id="panel">
+  <div class="panel-title">🌌 GENERADOR DE GALAXIAS</div>
+
+  <div id="type-row">
+    <button class="tbtn on"  data-type="spiral">Espiral</button>
+    <button class="tbtn"     data-type="barred">Barrada</button>
+    <button class="tbtn"     data-type="elliptical">Elíptica</button>
+    <button class="tbtn"     data-type="irregular">Irregular</button>
+    <button class="tbtn"     data-type="ring">Anular</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row"><label>ESTRELLAS</label>
+    <input type="range" id="sl-stars" min="500" max="8000" step="100" value="3000">
+    <span class="v" id="vl-stars">3k</span></div>
+  <div class="row"><label>BRAZOS</label>
+    <input type="range" id="sl-arms"  min="1"   max="8"    step="1"   value="2">
+    <span class="v" id="vl-arms">2</span></div>
+  <div class="row"><label>DISPERSIÓN</label>
+    <input type="range" id="sl-spread" min="5" max="60" step="1" value="22">
+    <span class="v" id="vl-spread">22</span></div>
+  <div class="row"><label>TAMAÑO</label>
+    <input type="range" id="sl-size" min="20" max="100" step="1" value="60">
+    <span class="v" id="vl-size">60</span></div>
+  <div class="row"><label>NEBULOSAS</label>
+    <input type="range" id="sl-nebula" min="0" max="12" step="1" value="5">
+    <span class="v" id="vl-nebula">5</span></div>
+  <div class="row"><label>ROTACIÓN</label>
+    <input type="range" id="sl-twist" min="0" max="100" step="1" value="55">
+    <span class="v" id="vl-twist">55</span></div>
+  <div class="row"><label>VELOCIDAD</label>
+    <input type="range" id="sl-speed" min="0" max="100" step="1" value="30">
+    <span class="v" id="vl-speed">30</span></div>
+
+  <div class="divider"></div>
+  <div class="panel-title" style="margin-bottom:3px">COLOR</div>
+  <div id="color-row">
+    <div class="cbtn on" data-c="0"   style="background:radial-gradient(#ffffee,#ffaa44,#884400)" title="Clásica"></div>
+    <div class="cbtn"    data-c="1"   style="background:radial-gradient(#eeffff,#44aaff,#002288)" title="Azul"></div>
+    <div class="cbtn"    data-c="2"   style="background:radial-gradient(#ffeeee,#ff44aa,#440022)" title="Rosa"></div>
+    <div class="cbtn"    data-c="3"   style="background:radial-gradient(#eeffee,#44ff88,#003322)" title="Verde"></div>
+    <div class="cbtn"    data-c="4"   style="background:radial-gradient(#ffeeff,#bb44ff,#220044)" title="Morada"></div>
+    <div class="cbtn"    data-c="5"   style="background:radial-gradient(#ffffff,#ffffff,#aaaaaa)" title="Blanca"></div>
+    <div class="cbtn"    data-c="6"   style="background:radial-gradient(#fff8ee,#ffcc44,#ff4400)" title="Fuego"></div>
+    <div class="cbtn"    data-c="7"   style="background:radial-gradient(#eefff8,#44ffee,#004444)" title="Aguamarina"></div>
+  </div>
+
+  <div class="divider"></div>
+  <div style="display:flex;gap:5px">
+    <button class="action-btn" id="regenerateBtn" style="flex:1">✦ NUEVA</button>
+    <button class="action-btn" id="saveBtn"        style="flex:1">💾 PNG</button>
+  </div>
+</div>
+
+<div id="hud">ARRASTRA · PELLIZCA · SCROLL PARA ZOOM</div>
+<div id="drag-hint">✦<br>GENERANDO<br>GALAXIA</div>
+</div>
+
+<script>
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+window.addEventListener('resize',()=>{resize();generate();});
+resize();
+
+// ── PARAMS ────────────────────────────────────────────────
+const G={
+  type:'spiral', stars:3000, arms:2, spread:22, size:60,
+  nebula:5, twist:55, speed:30, colorIdx:0,
+};
+
+const PALETTES=[
+  // [core, mid, outer, nebula hues]
+  {core:'#fffde8',mid:'#ffcc88',outer:'#ff8833',nebulaH:[30,45,15],name:'Clásica'},
+  {core:'#eef8ff',mid:'#88ccff',outer:'#3366ff',nebulaH:[210,200,230],name:'Azul'},
+  {core:'#ffecf5',mid:'#ff88cc',outer:'#cc2266',nebulaH:[330,310,350],name:'Rosa'},
+  {core:'#efffee',mid:'#88ffaa',outer:'#22aa55',nebulaH:[130,110,150],name:'Verde'},
+  {core:'#f8eeff',mid:'#cc88ff',outer:'#7722cc',nebulaH:[270,255,290],name:'Morada'},
+  {core:'#ffffff',mid:'#ddddff',outer:'#aaaacc',nebulaH:[230,210,250],name:'Blanca'},
+  {core:'#fff8e8',mid:'#ffcc44',outer:'#ff4400',nebulaH:[25,10,40],name:'Fuego'},
+  {core:'#eefffc',mid:'#44ffee',outer:'#009988',nebulaH:[175,160,190],name:'Aguamarina'},
+];
+
+// ── GALAXY DATA ───────────────────────────────────────────
+let stars=[];
+let nebulaBlobs=[];
+let dustClouds=[];
+let centerClusters=[];
+let animT=0;
+let rotating=false;
+
+// ── VIEW (pan + zoom) ─────────────────────────────────────
+let view={x:0,y:0,zoom:1,targetZoom:1};
+
+// ── GENERATE ──────────────────────────────────────────────
+function generate(){
+  stars=[];nebulaBlobs=[];dustClouds=[];centerClusters=[];
+  const pal=PALETTES[G.colorIdx];
+  const R=Math.min(W,H)*(G.size/100)*0.42;
+  const nStars=G.stars;
+  const seed=Math.random()*10000|0;
+
+  // Seeded random
+  let rng=seed;
+  function rand(){rng=(rng*1664525+1013904223)&0xffffffff;return(rng>>>0)/0xffffffff;}
+
+  // ── CENTER BULGE STARS ──
+  const bulgeCount=Math.floor(nStars*0.18);
+  for(let i=0;i<bulgeCount;i++){
+    const r=Math.pow(rand(),1.8)*R*0.22;
+    const a=rand()*Math.PI*2;
+    const brightness=0.5+rand()*0.5;
+    const size=0.4+rand()*1.8;
+    const hue=G.type==='elliptical'?rand()*30+20:rand()*40+10;
+    stars.push({
+      x:Math.cos(a)*r, y:Math.sin(a)*r*0.85,
+      r:size, brightness,
+      color:lerpColor(pal.core,pal.mid,rand()*0.4),
+      twinkle:rand()*Math.PI*2, twinkleSpeed:0.02+rand()*0.03,
+      armAngle:a, dist:r, isCore:true,
+    });
+  }
+
+  // ── ARM STARS ──
+  const armCount=G.type==='elliptical'?1:
+                 G.type==='ring'?1:
+                 G.type==='irregular'?Math.floor(rand()*3)+2:G.arms;
+
+  const armStars=Math.floor(nStars*(G.type==='elliptical'?0.82:0.72));
+  const twistAmount=(G.twist/100)*4.5;
+  const spreadRad=(G.spread/100)*0.55;
+
+  for(let i=0;i<armStars;i++){
+    let x,y,brightness,size,color;
+
+    if(G.type==='spiral'||G.type==='barred'){
+      const arm=Math.floor(rand()*armCount);
+      const armOffset=arm*(Math.PI*2/armCount);
+      const t=Math.pow(rand(),0.7); // distance along arm
+      const dist=t*R*(0.12+rand()*0.88);
+      const twist=Math.log(dist/R*10+1)*twistAmount;
+      const spread=(rand()-0.5)*spreadRad*dist*(1+t*0.5);
+      const angle=armOffset+twist+spread;
+
+      if(G.type==='barred'&&dist<R*0.3){
+        // Bar region — stars aligned horizontally
+        x=(rand()-0.5)*R*0.32;
+        y=(rand()-0.5)*R*0.07;
+      } else {
+        x=Math.cos(angle)*dist;
+        y=Math.sin(angle)*dist*0.88;
+      }
+      brightness=0.3+Math.pow(1-t,0.7)*0.7;
+      size=0.3+brightness*1.4+rand()*0.6;
+      const tColor=t*0.8+rand()*0.2;
+      color=lerpColor(pal.mid,pal.outer,tColor);
+
+    } else if(G.type==='elliptical'){
+      const r=Math.pow(rand(),0.6)*R;
+      const a=rand()*Math.PI*2;
+      const ell=0.55+rand()*0.35;
+      x=Math.cos(a)*r; y=Math.sin(a)*r*ell;
+      brightness=0.2+rand()*0.8;
+      size=0.3+rand()*1.2;
+      color=lerpColor(pal.core,pal.outer,Math.sqrt(r/R));
+
+    } else if(G.type==='ring'){
+      const ringR=R*(0.55+rand()*0.22);
+      const ringSpread=R*(0.06+rand()*0.08);
+      const a=rand()*Math.PI*2;
+      const r2=ringR+(rand()-0.5)*ringSpread*2;
+      x=Math.cos(a)*r2; y=Math.sin(a)*r2*0.9;
+      brightness=0.4+rand()*0.6;
+      size=0.4+rand()*1.2;
+      color=lerpColor(pal.mid,pal.outer,rand());
+
+    } else { // irregular
+      const r=Math.pow(rand(),0.5)*R;
+      const a=rand()*Math.PI*2+(rand()-0.5)*2;
+      const clump=rand()<0.3;
+      const cx2=clump?(rand()-0.5)*R*0.8:0;
+      const cy2=clump?(rand()-0.5)*R*0.5:0;
+      x=cx2+Math.cos(a)*r*(0.3+rand()*0.7);
+      y=cy2+Math.sin(a)*r*(0.3+rand()*0.7)*0.85;
+      brightness=0.2+rand()*0.8;
+      size=0.3+rand()*1.4;
+      color=lerpColor(pal.mid,pal.outer,rand());
+    }
+
+    // Bright hot stars (blue-white)
+    const isHot=rand()<0.04;
+    if(isHot){color='#ccddff';size*=1.5;brightness=0.8+rand()*0.2;}
+
+    stars.push({
+      x,y,r:size,brightness,color,
+      twinkle:rand()*Math.PI*2,
+      twinkleSpeed:0.015+rand()*0.025,
+      isCore:false,isHot,
+    });
+  }
+
+  // ── NEBULA BLOBS ──
+  const nebulaHues=pal.nebulaH;
+  for(let i=0;i<G.nebula;i++){
+    const arm=Math.floor(rand()*Math.max(armCount,1));
+    const armOff=arm*(Math.PI*2/Math.max(armCount,1));
+    const t=0.1+rand()*0.75;
+    const dist=t*R*0.9;
+    const twist=Math.log(dist/R*10+1)*twistAmount;
+    const a=armOff+twist+(rand()-0.5)*0.5;
+    const hue=nebulaHues[i%nebulaHues.length]+(rand()-0.5)*25;
+    const nr=R*(0.08+rand()*0.18);
+    nebulaBlobs.push({
+      x:Math.cos(a)*dist+(rand()-0.5)*R*0.15,
+      y:Math.sin(a)*dist*0.88+(rand()-0.5)*R*0.12,
+      r:nr, hue,
+      alpha:0.04+rand()*0.09,
+      r2:nr*(0.4+rand()*0.8),
+      angle:rand()*Math.PI*2,
+      layers:2+Math.floor(rand()*3),
+    });
+  }
+
+  // ── DUST LANES ──
+  const dustCount=G.type==='spiral'||G.type==='barred'?Math.min(armCount*2,8):2;
+  for(let i=0;i<dustCount;i++){
+    const arm=i%armCount;
+    const armOff=arm*(Math.PI*2/armCount)+Math.PI/armCount*0.5;
+    const pts=[];
+    const nPts=30;
+    for(let j=0;j<nPts;j++){
+      const t2=j/nPts;
+      const dist2=t2*R*0.85;
+      const twist2=Math.log(dist2/R*10+1)*twistAmount;
+      const a2=armOff+twist2+(rand()-0.5)*0.2;
+      pts.push({x:Math.cos(a2)*dist2,y:Math.sin(a2)*dist2*0.88});
+    }
+    dustClouds.push({pts,alpha:0.06+rand()*0.07,width:R*0.03+rand()*R*0.035});
+  }
+
+  // ── CENTER GLOW CLUSTERS ──
+  for(let i=0;i<6;i++){
+    const r3=rand()*R*0.08;
+    const a3=rand()*Math.PI*2;
+    centerClusters.push({
+      x:Math.cos(a3)*r3,y:Math.sin(a3)*r3*0.85,
+      r:R*(0.02+rand()*0.04),
+      alpha:0.12+rand()*0.18,
+      hue:nebulaHues[0],
+    });
+  }
+
+  document.getElementById('drag-hint').style.opacity='0';
+}
+
+// ── COLOR UTILS ───────────────────────────────────────────
+function hexToRgb(hex){
+  const n=parseInt(hex.replace('#',''),16);
+  return{r:(n>>16)&255,g:(n>>8)&255,b:n&255};
+}
+function lerpColor(c1,c2,t){
+  const a=hexToRgb(c1),b=hexToRgb(c2);
+  const r=Math.round(a.r+(b.r-a.r)*t);
+  const g=Math.round(a.g+(b.g-a.g)*t);
+  const b2=Math.round(a.b+(b.b-a.b)*t);
+  return`rgb(${r},${g},${b2})`;
+}
+
+// ── PAN / ZOOM ────────────────────────────────────────────
+let drag={active:false,sx:0,sy:0,ox:0,oy:0};
+let pinch={active:false,dist:0};
+
+canvas.addEventListener('mousedown',e=>{
+  drag.active=true;drag.sx=e.clientX;drag.sy=e.clientY;
+  drag.ox=view.x;drag.oy=view.y;
+});
+canvas.addEventListener('mousemove',e=>{
+  if(!drag.active)return;
+  view.x=drag.ox+(e.clientX-drag.sx);
+  view.y=drag.oy+(e.clientY-drag.sy);
+});
+canvas.addEventListener('mouseup',()=>drag.active=false);
+canvas.addEventListener('mouseleave',()=>drag.active=false);
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const factor=e.deltaY<0?1.1:0.91;
+  view.targetZoom=Math.max(0.15,Math.min(8,view.targetZoom*factor));
+},{passive:false});
+
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){
+    drag.active=true;drag.sx=e.touches[0].clientX;drag.sy=e.touches[0].clientY;
+    drag.ox=view.x;drag.oy=view.y;
+  } else if(e.touches.length===2){
+    drag.active=false;pinch.active=true;
+    pinch.dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,
+                          e.touches[0].clientY-e.touches[1].clientY);
+  }
+},{passive:true});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&drag.active){
+    view.x=drag.ox+(e.touches[0].clientX-drag.sx);
+    view.y=drag.oy+(e.touches[0].clientY-drag.sy);
+  } else if(e.touches.length===2&&pinch.active){
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,
+                       e.touches[0].clientY-e.touches[1].clientY);
+    const factor=d/pinch.dist;
+    view.targetZoom=Math.max(0.15,Math.min(8,view.targetZoom*factor));
+    pinch.dist=d;
+  }
+},{passive:false});
+canvas.addEventListener('touchend',()=>{drag.active=false;pinch.active=false;});
+
+// ── SLIDERS + BUTTONS ─────────────────────────────────────
+const sliderMap=[
+  ['stars','vl-stars',v=>{G.stars=v;document.getElementById('vl-stars').textContent=v>=1000?(v/1000).toFixed(1)+'k':v;}],
+  ['arms','vl-arms',v=>{G.arms=v;}],
+  ['spread','vl-spread',v=>{G.spread=v;}],
+  ['size','vl-size',v=>{G.size=v;}],
+  ['nebula','vl-nebula',v=>{G.nebula=v;}],
+  ['twist','vl-twist',v=>{G.twist=v;}],
+  ['speed','vl-speed',v=>{G.speed=v;}],
+];
+sliderMap.forEach(([id,vid,fn])=>{
+  const sl=document.getElementById('sl-'+id);
+  const vl=document.getElementById(vid);
+  sl.addEventListener('input',()=>{
+    const v=parseInt(sl.value);fn(v);
+    if(id!=='stars')vl.textContent=v;
+    generate();
+  });
+});
+
+document.querySelectorAll('.tbtn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');G.type=b.dataset.type;
+    // Auto-adjust arms for type
+    if(G.type==='elliptical'||G.type==='ring'){document.getElementById('sl-arms').value=1;G.arms=1;}
+    generate();
+  });
+});
+
+document.querySelectorAll('.cbtn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.cbtn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');G.colorIdx=parseInt(b.dataset.c);generate();
+  });
+});
+
+document.getElementById('regenerateBtn').addEventListener('click',generate);
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  // Render once without UI, then download
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download='galaxia-somos.png';a.click();
+});
+
+// ── DRAW ──────────────────────────────────────────────────
+function loop(){
+  requestAnimationFrame(loop);
+  animT+=0.012;
+  view.zoom+=(view.targetZoom-view.zoom)*0.09; // smooth zoom
+  draw();
+}
+
+function draw(){
+  ctx.fillStyle='#000008';ctx.fillRect(0,0,W,H);
+
+  // Background stars (distant universe, no transform)
+  drawBackgroundStars();
+
+  ctx.save();
+  // Center + pan + zoom
+  ctx.translate(W/2+view.x, H/2+view.y);
+  ctx.scale(view.zoom,view.zoom);
+
+  // Optional slow rotation
+  if(G.speed>0){
+    const rotSpeed=(G.speed/100)*0.0008;
+    ctx.rotate(animT*rotSpeed);
+  }
+
+  drawDustLanes();
+  drawNebulae();
+  drawCenterGlow();
+  drawStars();
+  drawCoreBlaze();
+
+  ctx.restore();
+}
+
+function drawBackgroundStars(){
+  // Static distant stars — drawn in screen space, unaffected by zoom/pan
+  // Use animT for very slow twinkle
+  ctx.save();
+  for(let i=0;i<300;i++){
+    // Deterministic position from index
+    const sx=((i*1234567)%W+W)%W;
+    const sy=((i*7654321+i*321)%H+H)%H;
+    const r2=0.2+((i*111)%10)/10*0.7;
+    const tw=0.4+0.6*Math.abs(Math.sin(i*0.3+animT*0.5));
+    ctx.globalAlpha=tw*0.35;
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(sx,sy,r2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function drawDustLanes(){
+  dustClouds.forEach(dc=>{
+    if(dc.pts.length<2)return;
+    ctx.strokeStyle=`rgba(0,0,0,${dc.alpha})`;
+    ctx.lineWidth=dc.width;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(dc.pts[0].x,dc.pts[0].y);
+    dc.pts.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.stroke();
+  });
+}
+
+function drawNebulae(){
+  const pal=PALETTES[G.colorIdx];
+  nebulaBlobs.forEach(nb=>{
+    for(let layer=0;layer<nb.layers;layer++){
+      const lr=nb.r*(0.5+layer*0.35);
+      const la=nb.alpha*(1-layer*0.25);
+      const g=ctx.createRadialGradient(nb.x,nb.y,lr*0.1,nb.x,nb.y,lr);
+      g.addColorStop(0,`hsla(${nb.hue},70%,65%,${la*1.4})`);
+      g.addColorStop(0.4,`hsla(${nb.hue+15},60%,45%,${la*0.7})`);
+      g.addColorStop(0.75,`hsla(${nb.hue-10},50%,30%,${la*0.25})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;
+      ctx.save();
+      ctx.translate(nb.x,nb.y);
+      ctx.rotate(nb.angle+layer*0.7);
+      ctx.scale(1,nb.r2/nb.r);
+      ctx.beginPath();ctx.arc(0,0,lr,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  });
+}
+
+function drawCenterGlow(){
+  const pal=PALETTES[G.colorIdx];
+  const R=Math.min(W,H)*(G.size/100)*0.42;
+  // Core halo
+  const cg=ctx.createRadialGradient(0,0,0,0,0,R*0.35);
+  cg.addColorStop(0,pal.core+'ff');
+  cg.addColorStop(0.15,pal.core+'cc');
+  cg.addColorStop(0.4,pal.mid+'66');
+  cg.addColorStop(0.7,pal.outer+'22');
+  cg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=cg;ctx.beginPath();ctx.arc(0,0,R*0.35,0,Math.PI*2);ctx.fill();
+
+  // Center clusters
+  centerClusters.forEach(cc=>{
+    const cg2=ctx.createRadialGradient(cc.x,cc.y,0,cc.x,cc.y,cc.r);
+    cg2.addColorStop(0,`hsla(${cc.hue},80%,90%,${cc.alpha})`);
+    cg2.addColorStop(0.5,`hsla(${cc.hue},70%,65%,${cc.alpha*0.4})`);
+    cg2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=cg2;ctx.beginPath();ctx.arc(cc.x,cc.y,cc.r,0,Math.PI*2);ctx.fill();
+  });
+
+  // Black hole / nucleus
+  if(G.type!=='irregular'){
+    const pulse=0.85+0.15*Math.sin(animT*2);
+    const bhr=Math.min(W,H)*0.006*pulse*(G.size/60);
+    const bhg=ctx.createRadialGradient(0,0,0,0,0,bhr*3);
+    bhg.addColorStop(0,'rgba(255,255,255,0.95)');
+    bhg.addColorStop(0.2,pal.core+'cc');
+    bhg.addColorStop(0.6,pal.mid+'55');
+    bhg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=bhg;ctx.beginPath();ctx.arc(0,0,bhr*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,bhr,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawStars(){
+  stars.forEach(s=>{
+    s.twinkle+=s.twinkleSpeed;
+    const tw=0.6+0.4*Math.sin(s.twinkle);
+    const alpha=s.brightness*tw;
+    const r=s.r*(0.8+0.2*tw);
+
+    // Glow for bright/hot stars
+    if(s.brightness>0.65||s.isHot||s.isCore){
+      const glowR=r*(s.isHot?4:s.isCore?2.5:2);
+      const gg=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,glowR);
+      const col=s.isHot?'rgba(180,200,255':'rgba(255,230,180';
+      gg.addColorStop(0,`${col},${alpha*0.6})`);
+      gg.addColorStop(0.5,`${col},${alpha*0.15})`);
+      gg.addColorStop(1,`${col},0)`);
+      ctx.fillStyle=gg;ctx.beginPath();ctx.arc(s.x,s.y,glowR,0,Math.PI*2);ctx.fill();
+    }
+
+    // Diffraction spikes for very bright stars
+    if(s.brightness>0.82||s.isHot){
+      const spikeLen=r*4.5;
+      ctx.strokeStyle=s.isHot?`rgba(180,210,255,${alpha*0.35})`:`rgba(255,240,200,${alpha*0.3})`;
+      ctx.lineWidth=0.6;
+      ctx.beginPath();ctx.moveTo(s.x-spikeLen,s.y);ctx.lineTo(s.x+spikeLen,s.y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s.x,s.y-spikeLen);ctx.lineTo(s.x,s.y+spikeLen);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s.x-spikeLen*0.6,s.y-spikeLen*0.6);ctx.lineTo(s.x+spikeLen*0.6,s.y+spikeLen*0.6);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s.x+spikeLen*0.6,s.y-spikeLen*0.6);ctx.lineTo(s.x-spikeLen*0.6,s.y+spikeLen*0.6);ctx.stroke();
+    }
+
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=s.color;
+    ctx.beginPath();ctx.arc(s.x,s.y,r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  });
+}
+
+function drawCoreBlaze(){
+  // Bright core overbloom — drawn last so it's always on top
+  const pal=PALETTES[G.colorIdx];
+  const R=Math.min(W,H)*(G.size/100)*0.42;
+  const pulse=0.92+0.08*Math.sin(animT*1.8);
+  const bg=ctx.createRadialGradient(0,0,0,0,0,R*0.18*pulse);
+  bg.addColorStop(0,pal.core+'ff');
+  bg.addColorStop(0.3,pal.core+'88');
+  bg.addColorStop(0.7,pal.mid+'33');
+  bg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.arc(0,0,R*0.18*pulse,0,Math.PI*2);ctx.fill();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+generate();
+loop();
+</script>
+</body>
+</html>
